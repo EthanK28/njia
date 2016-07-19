@@ -11,6 +11,7 @@ channel.subscriptions = {};
 
 channel.on('join', function(id, client) {
     this.clients[id] = client;
+    console.log("Joined: ", id, client);
     this.subscriptions[id] = function(senderId, message) {
         if (id != senderId) {
             this.clients[id].write(message);
@@ -18,23 +19,49 @@ channel.on('join', function(id, client) {
     }
 });
 
-channel.on('shutdown', function() {
+channel.on("random", () => {
+    console.log("random called");
+});
+
+channel.on('shutdown', () => {
+    console.log("Shutdown emitted");
     channel.emit('broadcast', '', "Chat has shut down.\n");
     channel.removeAllListeners('broadcast');
 });
 
-var server = net.createServer(function (client) {
+var server = net.createServer((client) => {
     var id = client.remoteAddress + ':' + client.remotePort;
-    client.on('connect', function(){
-        channel.emit('join', id, client);
+    console.log("ID:", id);
+    console.log("client: ", client);
+
+    client.on('end', () => {
+        console.log('client disconnected');
+    });
+
+    
+    channel.emit('join', id, client);
+    
+    debugger;
+
+    client.on('connecting', (options) => {
+        console.log("connecting ", options);
     });
 
     client.on('data', function(data) {
         data = data.toString();
-        if (data == "shutdown\r\n") {
+        if (data.includes("shutdown")) {
+            console.log("inside shutdown if");
             channel.emit('shutdown');
         }
+
+        channel.emit("random");
+        console.log("equals on shutdown", data.includes("shutdown"))
+        console.log("data: ", data);
         channel.emit('broadcast', id, data);
+    });
+}).on("connection", (socket) => {
+    socket.on("connect", (options) => {
+        console.log("connected");
     });
 });
 
